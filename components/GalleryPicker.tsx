@@ -15,13 +15,15 @@ interface GalleryPickerProps {
 const GalleryPicker: React.FC<GalleryPickerProps> = ({ onSelect, onClose, multiple = true }) => {
     const [hasPermission, setHasPermission] = useState(false);
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+    
+    // Import State
     const [isImporting, setIsImporting] = useState(false);
+    const [importProgress, setImportProgress] = useState({ current: 0, total: 0 });
+    
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { addToast } = useToast();
 
-    // FEATURE 2: In-App Gallery Behavior
-    // We query the internal 'mediaAssets' table. This acts as the app's private gallery.
-    // Users "import" from the system, but once imported, they select from here.
+    // FEATURE 2: In-App Gallery Behavior (The Vault)
     const assets = useLiveQuery(() => data.mediaAssets.orderBy('createdAt').reverse().toArray(), []);
 
     const toggleSelection = (id: number) => {
@@ -44,41 +46,67 @@ const GalleryPicker: React.FC<GalleryPickerProps> = ({ onSelect, onClose, multip
         onClose();
     };
 
+    /**
+     * CRASH-SAFE IMPORT LOGIC
+     * Processes images in small chunks (batches) to prevent Memory Leaks and Browser Freezing.
+     */
     const handleSystemImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
         if (!files || files.length === 0) return;
         
         setIsImporting(true);
+        setImportProgress({ current: 0, total: files.length });
+
+        const BATCH_SIZE = 3; // Process 3 images at a time to keep UI responsive
+        const newIds: number[] = [];
+        let processedCount = 0;
+
         try {
-            const newIds: number[] = [];
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
-                // Compress slightly for storage efficiency
-                const optimized = await compressImage(file, 2000, 0.85);
-                const id = await data.mediaAssets.add({
-                    blob: optimized,
-                    createdAt: new Date(),
-                    type: 'image'
-                });
-                newIds.push(id as number);
+            // Convert FileList to Array for easier slicing
+            const fileArray = Array.from(files);
+
+            for (let i = 0; i < fileArray.length; i += BATCH_SIZE) {
+                const batch = fileArray.slice(i, i + BATCH_SIZE);
+                
+                // Process batch in parallel
+                await Promise.all(batch.map(async (file) => {
+                    try {
+                        // Compress to save DB space and prevent QuotaExceededError
+                        const optimized = await compressImage(file, 2000, 0.85);
+                        const id = await data.mediaAssets.add({
+                            blob: optimized,
+                            createdAt: new Date(),
+                            type: 'image'
+                        });
+                        newIds.push(id as number);
+                    } catch (err) {
+                        console.warn("Skipped a file due to error:", file.name, err);
+                    }
+                }));
+
+                processedCount += batch.length;
+                setImportProgress({ current: Math.min(processedCount, files.length), total: files.length });
+                
+                // Small breathing room for the UI thread
+                await new Promise(resolve => setTimeout(resolve, 50));
             }
             
-            // Auto-select newly imported items for convenience
+            // Auto-select newly imported items
             const newSet = new Set(selectedIds);
             newIds.forEach(id => newSet.add(id));
             setSelectedIds(newSet);
             
-            addToast(`Imported ${files.length} items to Gallery`, 'success');
+            addToast(`Successfully secured ${newIds.length} photos`, 'success');
         } catch (err) {
             console.error(err);
-            addToast('Failed to import images', 'error');
+            addToast('Storage limit reached or import failed', 'error');
         } finally {
             setIsImporting(false);
             if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
 
-    // Simulated Permission Screen for "App Gallery" feel
+    // Permission Simulation Screen
     if (!hasPermission) {
         return (
             <div className="fixed inset-0 z-[60] bg-primary flex flex-col items-center justify-center p-6 text-center animate-fade-in">
@@ -87,7 +115,7 @@ const GalleryPicker: React.FC<GalleryPickerProps> = ({ onSelect, onClose, multip
                 </div>
                 <h2 className="text-2xl font-black uppercase tracking-tighter mb-2">ZIA Gallery Access</h2>
                 <p className="text-text-sub mb-8 max-w-xs text-sm">
-                    Allow ZIA to access your secured internal media vault to select and organize your visual memories.
+                    Allow ZIA to access your secure internal media vault to organize your visual memories.
                 </p>
                 <div className="flex gap-4 w-full max-w-xs">
                      <button onClick={onClose} className="flex-1 py-3 rounded-xl font-bold text-text-sub bg-secondary hover:bg-border-base transition">
@@ -109,25 +137,25 @@ const GalleryPicker: React.FC<GalleryPickerProps> = ({ onSelect, onClose, multip
                     <CloseIcon className="w-6 h-6" />
                 </button>
                 <div className="flex flex-col items-center">
-                    <span className="font-bold text-sm uppercase tracking-wide">In-App Gallery</span>
+                    <span className="font-bold text-sm uppercase tracking-wide">Select Media</span>
                     <span className="text-[10px] text-text-sub">{selectedIds.size} selected</span>
                 </div>
                 <button 
                     onClick={handleConfirm}
-                    disabled={selectedIds.size === 0}
+                    disabled={selectedIds.size === 0 || isImporting}
                     className="text-sm font-bold text-accent disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    Add ({selectedIds.size})
+                    Done ({selectedIds.size})
                 </button>
             </div>
 
             {/* Grid */}
             <div className="flex-1 overflow-y-auto p-1 bg-secondary/30">
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-1">
-                    {/* "Import from Device" Tile - Acts as the bridge to system storage */}
+                    {/* Import Tile */}
                     <div 
-                        onClick={() => fileInputRef.current?.click()}
-                        className="aspect-square bg-secondary border-2 border-dashed border-border-base flex flex-col items-center justify-center cursor-pointer hover:bg-border-base transition-colors relative"
+                        onClick={() => !isImporting && fileInputRef.current?.click()}
+                        className={`aspect-square bg-secondary border-2 border-dashed border-border-base flex flex-col items-center justify-center cursor-pointer hover:bg-border-base transition-colors relative ${isImporting ? 'opacity-50 cursor-wait' : ''}`}
                     >
                          <input 
                             type="file" 
@@ -138,7 +166,10 @@ const GalleryPicker: React.FC<GalleryPickerProps> = ({ onSelect, onClose, multip
                             onChange={handleSystemImport}
                         />
                         {isImporting ? (
-                            <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+                            <div className="flex flex-col items-center">
+                                <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin mb-2" />
+                                <span className="text-[9px] font-mono">{Math.round((importProgress.current / importProgress.total) * 100)}%</span>
+                            </div>
                         ) : (
                             <>
                                 <PlusIcon className="w-8 h-8 text-text-sub mb-1" />
