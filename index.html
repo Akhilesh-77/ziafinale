@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <link rel="manifest" href="/manifest.json" />
+    <title>ZIA.AI</title>
+    <link rel="icon" type="png" href="https://i.postimg.cc/qRB2Gnw2/Gemini-Generated-Image-vfkohrvfkohrvfko-1.png"/>
+    <link rel="stylesheet" href="https://unpkg.com/react-image-crop/dist/ReactCrop.css" />
+    <script>
+      // Suppress Tailwind CDN warning for production environment usage
+      (function() {
+        var originalWarn = console.warn;
+        console.warn = function(...args) {
+          if (args[0] && typeof args[0] === 'string' && args[0].includes('cdn.tailwindcss.com should not be used in production')) {
+            return;
+          }
+          originalWarn.apply(console, args);
+        };
+      })();
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              primary: 'var(--bg-primary)',
+              secondary: 'var(--bg-secondary)',
+              'text-main': 'var(--text-primary)',
+              'text-sub': 'var(--text-secondary)',
+              'border-base': 'var(--border-color)',
+              accent: 'var(--accent)',
+              'accent-hover': 'var(--accent-hover)',
+            },
+            animation: {
+              'fade-in': 'fadeIn 0.4s ease-out forwards',
+              'menu-enter': 'fadeIn 0.2s ease-out forwards',
+              'slide-right': 'slideRight 0.3s ease-out forwards',
+            },
+            keyframes: {
+              fadeIn: {
+                '0%': { opacity: '0', transform: 'scale(0.98)' },
+                '100%': { opacity: '1', transform: 'scale(1)' },
+              },
+              slideRight: {
+                '0%': { transform: 'translateX(-100%)' },
+                '100%': { transform: 'translateX(0)' },
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      /* THEME VARIABLES */
+      :root {
+        /* Default (Light) */
+        --bg-primary: #ffffff;
+        --bg-secondary: #f3f4f6; /* gray-100 */
+        --text-primary: #111827; /* gray-900 */
+        --text-secondary: #6b7280; /* gray-500 */
+        --border-color: #e5e7eb; /* gray-200 */
+        --accent: #000000;
+        --accent-hover: #374151;
+      }
+
+      html.dark {
+        --bg-primary: #000000;
+        --bg-secondary: #111111;
+        --text-primary: #ffffff;
+        --text-secondary: #9ca3af; /* gray-400 */
+        --border-color: #333333;
+        --accent: #ffffff;
+        --accent-hover: #d1d5db;
+      }
+
+      html.pink {
+        --bg-primary: #fff0f5; /* LavenderBlush */
+        --bg-secondary: #fce7f3; /* pink-100 */
+        --text-primary: #831843; /* pink-900 */
+        --text-secondary: #be185d; /* pink-700 */
+        --border-color: #fbcfe8; /* pink-200 */
+        --accent: #db2777; /* pink-600 */
+        --accent-hover: #be185d; /* pink-700 */
+      }
+
+      /* Base styles */
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+      body::-webkit-scrollbar {
+        display: none;
+      }
+      html, body, #root {
+        height: 100%;
+        width: 100%;
+        overflow: hidden;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background-color: var(--bg-primary);
+        color: var(--text-primary);
+        transition: background-color 0.3s ease, color 0.3s ease;
+      }
+      
+      /* React Image Crop Overrides for 'Scanner Style' */
+      .ReactCrop__drag-handle {
+        width: 12px;
+        height: 12px;
+        background-color: #3b82f6;
+        border: 2px solid #fff;
+        border-radius: 50%;
+      }
+      .ReactCrop__drag-handle.ord-n,
+      .ReactCrop__drag-handle.ord-e,
+      .ReactCrop__drag-handle.ord-s,
+      .ReactCrop__drag-handle.ord-w {
+        display: none;
+      }
+      
+      /* Signature Pad Canvas */
+      canvas.signature-pad {
+        touch-action: none;
+        cursor: crosshair;
+      }
+    </style>
+    <script>
+      // Prevent FOUC
+      try {
+        const storedTheme = localStorage.getItem('theme');
+        if (storedTheme) {
+          document.documentElement.className = storedTheme;
+        } else {
+          document.documentElement.className = 'light';
+        }
+      } catch (e) { console.error(e); }
+      
+      // Register Service Worker
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(registration => {
+              console.log('SW registered:', registration);
+            })
+            .catch(error => {
+              console.log('SW registration failed:', error);
+            });
+        });
+      }
+    </script>
+  <script type="importmap">
+  {
+    "imports": {
+      "react/": "https://esm.sh/react@^19.2.3/",
+      "react": "https://esm.sh/react@^19.2.3",
+      "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+      "dexie-react-hooks": "https://esm.sh/dexie-react-hooks@^4.2.0",
+      "dexie": "https://esm.sh/dexie@^4.2.1",
+      "react-image-crop": "https://esm.sh/react-image-crop@10.1.4"
+    }
+  }
+  </script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body class="bg-primary text-text-main">
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>

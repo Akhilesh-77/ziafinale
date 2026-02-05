@@ -1,0 +1,5 @@
+{
+  "name": "ZIA.AI",
+  "description": "A pure photo experience app for viewing and organizing image collections locally. Features a full-screen, vertical-scrolling home feed and a rich gallery viewer with zoom and pan capabilities.",
+  "requestFramePermissions": []
+}
