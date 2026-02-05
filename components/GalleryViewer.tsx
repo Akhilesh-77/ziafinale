@@ -86,11 +86,19 @@ const GalleryViewer: React.FC<GalleryViewerProps> = ({ album, onClose }) => {
         )}
       </div>
 
-      {/* Navigation Arrows */}
-      <button onClick={handlePrev} className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-primary/80 backdrop-blur rounded-full shadow-lg hover:scale-110 transition z-20 text-text-main border border-border-base hidden md:block">
+      {/* Navigation Arrows - Always Visible */}
+      <button 
+        onClick={(e) => { e.stopPropagation(); handlePrev(); }} 
+        className="absolute left-4 top-1/2 -translate-y-1/2 p-4 bg-primary/80 backdrop-blur rounded-full shadow-lg hover:scale-110 transition z-30 text-text-main border border-border-base active:bg-secondary"
+        aria-label="Previous Image"
+      >
         <ChevronLeftIcon className="w-6 h-6" />
       </button>
-      <button onClick={handleNext} className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-primary/80 backdrop-blur rounded-full shadow-lg hover:scale-110 transition z-20 text-text-main border border-border-base hidden md:block">
+      <button 
+        onClick={(e) => { e.stopPropagation(); handleNext(); }} 
+        className="absolute right-4 top-1/2 -translate-y-1/2 p-4 bg-primary/80 backdrop-blur rounded-full shadow-lg hover:scale-110 transition z-30 text-text-main border border-border-base active:bg-secondary"
+        aria-label="Next Image"
+      >
         <ChevronRightIcon className="w-6 h-6" />
       </button>
 
