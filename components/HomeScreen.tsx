@@ -12,6 +12,51 @@ interface HomeScreenProps {
   onEditAlbum?: (album: PhotoHuman) => void;
 }
 
+const EMOJI_LIST = ['❤️', '🔥', '👏', '😂', '😮', '😢', '😍', '🎉'];
+
+// --- Reaction Picker ---
+const ReactionPicker: React.FC = () => {
+    const [isOpen, setIsOpen] = useState(false);
+    const { triggerReaction } = useReaction();
+
+    const handleReact = (emoji: string) => {
+        triggerReaction(emoji);
+        setIsOpen(false);
+    };
+
+    return (
+        <div className="relative">
+            <button 
+                onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-black/20 hover:bg-black/40 backdrop-blur-md text-white transition-all border border-white/10"
+                title="React"
+            >
+                <span className="text-sm">😀</span>
+            </button>
+            
+            {isOpen && (
+                <>
+                    <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setIsOpen(false); }} />
+                    <div 
+                        className="absolute bottom-10 right-0 bg-primary/95 backdrop-blur-xl border border-border-base rounded-full shadow-2xl p-2 flex gap-2 z-50 animate-fade-in w-max"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {EMOJI_LIST.map(emoji => (
+                            <button 
+                                key={emoji}
+                                onClick={() => handleReact(emoji)}
+                                className="text-xl hover:scale-125 transition-transform"
+                            >
+                                {emoji}
+                            </button>
+                        ))}
+                    </div>
+                </>
+            )}
+        </div>
+    );
+};
+
 // --- Horizontal Reel Item ---
 const ReelItem: React.FC<{ image: Blob; onClick: () => void }> = ({ image, onClick }) => {
   const src = useMemo(() => URL.createObjectURL(image), [image]);
@@ -111,7 +156,9 @@ const TiltCard: React.FC<{
       {/* Card Header */}
       <div className="flex justify-between items-center mb-3 px-1">
         <div>
+           {/* UPDATED: Changed text-white to text-text-main for theme support */}
            <h3 className="font-bold text-lg text-text-main leading-tight">{collection.name}</h3>
+           {/* UPDATED: Changed text-gray-400 to text-text-sub */}
            {collection.description && <p className="text-xs text-text-sub">{collection.description}</p>}
         </div>
         
@@ -223,8 +270,7 @@ const TiltCard: React.FC<{
 
 // --- Main Home Screen ---
 const HomeScreen: React.FC<HomeScreenProps> = ({ onViewAlbum, onEditAlbum }) => {
-  // Sorting by lastViewedAt so the most recently used collections appear first
-  const collections = useLiveQuery(() => data.photoHumans.orderBy('lastViewedAt').reverse().toArray(), []);
+  const collections = useLiveQuery(() => data.photoHumans.orderBy('createdAt').reverse().toArray(), []);
 
   // Aggregate random images for the "Shorts/Reels" section
   const reelImages = useMemo(() => {
