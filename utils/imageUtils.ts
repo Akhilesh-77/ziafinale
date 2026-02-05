@@ -65,11 +65,13 @@ export async function getCroppedImg(
 
 /**
  * Compresses an image blob if it exceeds a certain size.
- * Resizes large images to max 1600px dimension and uses JPEG 0.8 compression.
+ * Resizes large images to max 1280px dimension (or 1600px/3840px based on args) and uses JPEG compression.
+ * optimized for Mobile performance.
  */
-export async function compressImage(file: Blob, maxWidth = 1600, quality = 0.8): Promise<Blob> {
-    // Skip small files (e.g. < 1MB) to save processing time
-    if (file.size < 1024 * 1024) return file;
+export async function compressImage(file: Blob, maxWidth = 1280, quality = 0.8): Promise<Blob> {
+    // Skip small files (e.g. < 2.5MB) to save processing time on mobile.
+    // 2.5MB is reasonably small for Dexie/IndexedDB and allows instant saving for most phone shots.
+    if (file.size < 2.5 * 1024 * 1024) return file;
 
     return new Promise((resolve) => {
         const img = new Image();
@@ -90,9 +92,9 @@ export async function compressImage(file: Blob, maxWidth = 1600, quality = 0.8):
                     height = maxWidth;
                     width = height * ratio;
                 }
-            } else if (file.size < 2 * 1024 * 1024) {
-                // If dimensions are okay and size is < 2MB, just return original
-                // This prevents re-compressing already optimized images
+            } else if (file.size < 3.5 * 1024 * 1024) {
+                // If dimensions are small enough but size is borderline (between 2.5 and 3.5MB), 
+                // skip canvas processing to prioritize speed over space.
                 resolve(file);
                 return;
             }
@@ -108,6 +110,9 @@ export async function compressImage(file: Blob, maxWidth = 1600, quality = 0.8):
             }
 
             // Draw and compress
+            // Using a slightly lower quality for mobile speed if not 4k
+            const effectiveQuality = maxWidth > 2000 ? quality : 0.7;
+            
             ctx.drawImage(img, 0, 0, width, height);
             
             canvas.toBlob((blob) => {
@@ -117,7 +122,7 @@ export async function compressImage(file: Blob, maxWidth = 1600, quality = 0.8):
                 } else {
                     resolve(file);
                 }
-            }, 'image/jpeg', quality);
+            }, 'image/jpeg', effectiveQuality);
         };
 
         img.onerror = () => {
