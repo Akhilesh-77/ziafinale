@@ -1,9 +1,9 @@
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { data } from '../services/data';
 import { compressImage } from '../utils/imageUtils';
-import { CloseIcon, PlusIcon, CheckIcon, VaultIcon } from './Icons';
+import { CloseIcon, PlusIcon, CheckIcon } from './Icons';
 import { useToast } from '../context/ToastContext';
 import { useSound } from '../context/SoundContext';
 
@@ -14,19 +14,19 @@ interface GalleryPickerProps {
 }
 
 const GalleryPicker: React.FC<GalleryPickerProps> = ({ onSelect, onClose, multiple = true }) => {
-    const [hasPermission, setHasPermission] = useState(false);
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-    const [isImporting, setIsImporting] = useState(false);
-    const [importProgress, setImportProgress] = useState({ current: 0, total: 0 });
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
     
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { addToast } = useToast();
-    const { playClick, playSuccess, playPop } = useSound();
+    const { playClick, playSuccess } = useSound();
 
+    // Query internal assets ONLY
     const assets = useLiveQuery(() => data.mediaAssets.orderBy('createdAt').reverse().toArray(), []);
 
     const toggleSelection = (id: number) => {
-        playClick(); // Feedback for toggle
+        playClick(); 
         const newSet = new Set(selectedIds);
         if (newSet.has(id)) {
             newSet.delete(id);
@@ -47,13 +47,13 @@ const GalleryPicker: React.FC<GalleryPickerProps> = ({ onSelect, onClose, multip
         onClose();
     };
 
-    const handleSystemImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
         if (!files || files.length === 0) return;
         
-        setIsImporting(true);
+        setIsUploading(true);
         playClick();
-        setImportProgress({ current: 0, total: files.length });
+        setUploadProgress({ current: 0, total: files.length });
 
         const BATCH_SIZE = 3; 
         const newIds: number[] = [];
@@ -75,12 +75,12 @@ const GalleryPicker: React.FC<GalleryPickerProps> = ({ onSelect, onClose, multip
                         });
                         newIds.push(id as number);
                     } catch (err) {
-                        console.warn("Skipped a file due to error:", file.name, err);
+                        console.warn("Upload skip", err);
                     }
                 }));
 
                 processedCount += batch.length;
-                setImportProgress({ current: Math.min(processedCount, files.length), total: files.length });
+                setUploadProgress({ current: Math.min(processedCount, files.length), total: files.length });
                 await new Promise(resolve => setTimeout(resolve, 50));
             }
             
@@ -89,38 +89,15 @@ const GalleryPicker: React.FC<GalleryPickerProps> = ({ onSelect, onClose, multip
             setSelectedIds(newSet);
             
             playSuccess();
-            addToast(`Successfully secured ${newIds.length} photos`, 'success');
+            addToast(`Uploaded ${newIds.length} images`, 'success');
         } catch (err) {
             console.error(err);
-            addToast('Storage limit reached or import failed', 'error');
+            addToast('Upload failed', 'error');
         } finally {
-            setIsImporting(false);
+            setIsUploading(false);
             if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
-
-    // Permission Screen
-    if (!hasPermission) {
-        return (
-            <div className="fixed inset-0 z-[60] bg-primary flex flex-col items-center justify-center p-6 text-center animate-fade-in">
-                <div className="w-24 h-24 bg-secondary rounded-3xl flex items-center justify-center mb-6 shadow-xl border border-border-base animate-bounce-soft">
-                    <VaultIcon className="w-10 h-10 text-text-main" />
-                </div>
-                <h2 className="text-2xl font-black uppercase tracking-tighter mb-2">ZIA Gallery Access</h2>
-                <p className="text-text-sub mb-8 max-w-xs text-sm">
-                    Allow ZIA to access your secure internal media vault to organize your visual memories.
-                </p>
-                <div className="flex gap-4 w-full max-w-xs">
-                     <button onClick={() => { playClick(); onClose(); }} className="flex-1 py-3 rounded-xl font-bold text-text-sub bg-secondary hover:bg-border-base transition active:scale-95">
-                        Cancel
-                    </button>
-                    <button onClick={() => { playSuccess(); setHasPermission(true); }} className="flex-1 py-3 rounded-xl font-bold text-primary bg-accent hover:opacity-90 transition shadow-lg active:scale-95">
-                        Allow Access
-                    </button>
-                </div>
-            </div>
-        );
-    }
 
     return (
         <div className="fixed inset-0 z-[60] bg-primary flex flex-col animate-slide-right">
@@ -130,12 +107,12 @@ const GalleryPicker: React.FC<GalleryPickerProps> = ({ onSelect, onClose, multip
                     <CloseIcon className="w-6 h-6" />
                 </button>
                 <div className="flex flex-col items-center">
-                    <span className="font-bold text-sm uppercase tracking-wide">Select Media</span>
+                    <span className="font-bold text-sm uppercase tracking-wide">Select Images</span>
                     <span className="text-[10px] text-text-sub">{selectedIds.size} selected</span>
                 </div>
                 <button 
                     onClick={handleConfirm}
-                    disabled={selectedIds.size === 0 || isImporting}
+                    disabled={selectedIds.size === 0 || isUploading}
                     className="text-sm font-bold text-accent disabled:opacity-50 disabled:cursor-not-allowed transition-transform active:scale-95"
                 >
                     Done ({selectedIds.size})
@@ -146,8 +123,8 @@ const GalleryPicker: React.FC<GalleryPickerProps> = ({ onSelect, onClose, multip
             <div className="flex-1 overflow-y-auto p-1 bg-secondary/30">
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-1">
                     <div 
-                        onClick={() => !isImporting && fileInputRef.current?.click()}
-                        className={`aspect-square bg-secondary border-2 border-dashed border-border-base flex flex-col items-center justify-center cursor-pointer hover:bg-border-base transition-colors relative active:scale-95 duration-150 ${isImporting ? 'opacity-50 cursor-wait' : ''}`}
+                        onClick={() => !isUploading && fileInputRef.current?.click()}
+                        className={`aspect-square bg-secondary border-2 border-dashed border-border-base flex flex-col items-center justify-center cursor-pointer hover:bg-border-base transition-colors relative active:scale-95 duration-150 ${isUploading ? 'opacity-50 cursor-wait' : ''}`}
                     >
                          <input 
                             type="file" 
@@ -155,17 +132,17 @@ const GalleryPicker: React.FC<GalleryPickerProps> = ({ onSelect, onClose, multip
                             accept="image/*" 
                             className="hidden" 
                             ref={fileInputRef}
-                            onChange={handleSystemImport}
+                            onChange={handleUpload}
                         />
-                        {isImporting ? (
+                        {isUploading ? (
                             <div className="flex flex-col items-center">
                                 <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin mb-2" />
-                                <span className="text-[9px] font-mono">{Math.round((importProgress.current / importProgress.total) * 100)}%</span>
+                                <span className="text-[9px] font-mono">{Math.round((uploadProgress.current / uploadProgress.total) * 100)}%</span>
                             </div>
                         ) : (
                             <>
                                 <PlusIcon className="w-8 h-8 text-text-sub mb-1" />
-                                <span className="text-[10px] font-bold uppercase text-text-sub text-center leading-tight">Import<br/>from Phone</span>
+                                <span className="text-[10px] font-bold uppercase text-text-sub text-center leading-tight">Upload<br/>New</span>
                             </>
                         )}
                     </div>
