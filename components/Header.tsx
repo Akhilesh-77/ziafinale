@@ -35,16 +35,28 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar, isSidebarOpen }) => {
              </div>
         </div>
         
-        <button
-          onClick={toggleTheme}
-          className="p-3 rounded-full transition-colors bg-secondary hover:bg-border-base text-text-main"
-          aria-label="Toggle theme"
-          title={`Current: ${theme.toUpperCase()}`}
-        >
-          {theme === 'light' && <MoonIcon className="w-5 h-5" />}
-          {theme === 'dark' && <HeartIcon className="w-5 h-5" />}
-          {theme === 'pink' && <SunIcon className="w-5 h-5" />}
-        </button>
+        <div className="flex items-center gap-3">
+            <a 
+                href="https://aistudio.google.com/apps/drive/17KnveoK-ru6mEk2JGR54iUuuE6-pDSWp?showPreview=true&showAssistant=true&appParams=home" 
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 py-2 px-4 bg-gradient-to-r from-violet-600 to-indigo-600 rounded-full text-white shadow-md hover:shadow-lg hover:scale-105 transition-all border border-white/10"
+            >
+                <span className="text-sm">✨</span>
+                <span className="hidden sm:inline text-xs font-bold uppercase tracking-wider">Use Zia</span>
+            </a>
+
+            <button
+            onClick={toggleTheme}
+            className="p-3 rounded-full transition-colors bg-secondary hover:bg-border-base text-text-main"
+            aria-label="Toggle theme"
+            title={`Current: ${theme.toUpperCase()}`}
+            >
+            {theme === 'light' && <MoonIcon className="w-5 h-5" />}
+            {theme === 'dark' && <HeartIcon className="w-5 h-5" />}
+            {theme === 'pink' && <SunIcon className="w-5 h-5" />}
+            </button>
+        </div>
       </div>
     </header>
   );
