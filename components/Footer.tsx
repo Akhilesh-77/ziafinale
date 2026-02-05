@@ -14,7 +14,7 @@ const Footer: React.FC<FooterProps> = ({ currentView, setView }) => {
     { view: 'home', label: 'Home', icon: HomeIcon },
     { view: 'feed', label: 'Feed', icon: FeedIcon },
     { view: 'create', label: 'Create', icon: PlusIcon },
-    { view: 'gallery', label: 'Lock', icon: VaultIcon },
+    { view: 'gallery', label: 'Gallery', icon: VaultIcon }, // Renamed from Lock to Gallery
     { view: 'prompts', label: 'Prompt', icon: PromptIcon },
   ];
 
