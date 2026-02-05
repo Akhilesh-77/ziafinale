@@ -173,8 +173,6 @@ const FeedPost: React.FC<{ album: PhotoHuman }> = ({ album }) => {
                         >
                             <span className="text-xl">❤️‍🔥</span>
                         </button>
-
-                        <svg className="w-7 h-7 text-text-main hover:text-text-sub transition-colors cursor-pointer" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>
                     </div>
                 </div>
                 
@@ -191,7 +189,8 @@ const FeedPost: React.FC<{ album: PhotoHuman }> = ({ album }) => {
 };
 
 const FeedScreen: React.FC = () => {
-    const albums = useLiveQuery(() => data.photoHumans.orderBy('createdAt').reverse().toArray(), []);
+    // Sorting by lastViewedAt for consistency with Home
+    const albums = useLiveQuery(() => data.photoHumans.orderBy('lastViewedAt').reverse().toArray(), []);
     const [viewingStory, setViewingStory] = useState<PhotoHuman | null>(null);
 
     if (!albums) return <div className="p-10 text-center text-text-sub animate-pulse">Loading feed...</div>;
