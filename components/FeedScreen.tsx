@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { data } from '../services/data';
@@ -6,9 +7,12 @@ import { HeartIcon } from './Icons';
 import StoryViewer from './StoryViewer';
 import PanZoomImage from './PanZoomImage';
 import { useReaction } from '../context/ReactionContext';
+import { useSound } from '../context/SoundContext';
 
 // --- Story Circle Component ---
 const StoryCircle: React.FC<{ album: PhotoHuman; onClick: () => void }> = ({ album, onClick }) => {
+    const { playClick } = useSound();
+    
     const randomImageBlob = useMemo(() => {
         if (album.images && album.images.length > 0) {
             const randomIndex = Math.floor(Math.random() * album.images.length);
@@ -24,7 +28,10 @@ const StoryCircle: React.FC<{ album: PhotoHuman; onClick: () => void }> = ({ alb
     }, [imageUrl]);
 
     return (
-        <div className="flex flex-col items-center gap-1 cursor-pointer group" onClick={onClick}>
+        <div 
+            className="flex flex-col items-center gap-1 cursor-pointer group active:scale-90 transition-transform duration-150" 
+            onClick={() => { playClick(); onClick(); }}
+        >
             <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-yellow-400 to-fuchsia-600 p-[3px] group-hover:scale-105 transition-transform duration-200">
                 <div className="w-full h-full rounded-full border-2 border-primary bg-primary overflow-hidden">
                     <img src={imageUrl} alt={album.name} className="w-full h-full object-cover" />
@@ -42,6 +49,7 @@ const FeedPost: React.FC<{ album: PhotoHuman }> = ({ album }) => {
     const [aspectRatio, setAspectRatio] = useState<number>(1);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const { triggerBurst } = useReaction();
+    const { playPop, playClick } = useSound();
 
     const displayImages = useMemo(() => {
         if (album.images && album.images.length > 0) {
@@ -81,9 +89,11 @@ const FeedPost: React.FC<{ album: PhotoHuman }> = ({ album }) => {
     const toggleLike = async () => {
         if (!album.id) return;
         if (isLiked) {
+            playClick(); // Unlike sound (plain click)
             await data.likes.delete(album.id);
             setIsLiked(false);
         } else {
+            playPop(); // Like sound (pop)
             await data.likes.put({ albumId: album.id, likedAt: new Date() });
             setIsLiked(true);
             triggerBurst(); 
@@ -91,6 +101,7 @@ const FeedPost: React.FC<{ album: PhotoHuman }> = ({ album }) => {
     };
 
     const handleRandomReaction = (e: React.MouseEvent) => {
+        playPop();
         triggerBurst(e.clientX, e.clientY);
     };
 
@@ -104,7 +115,7 @@ const FeedPost: React.FC<{ album: PhotoHuman }> = ({ album }) => {
     };
 
     return (
-        <div className="bg-primary border-b border-border-base pb-4 mb-4">
+        <div className="bg-primary border-b border-border-base pb-4 mb-4 animate-fade-in-up">
             <div className="flex items-center gap-3 p-4">
                 <div className="w-10 h-10 rounded-full bg-secondary overflow-hidden border border-border-base">
                     <img src={imageUrls[0]} alt="avatar" className="w-full h-full object-cover" />
@@ -156,13 +167,13 @@ const FeedPost: React.FC<{ album: PhotoHuman }> = ({ album }) => {
             <div className="p-4">
                 <div className="flex items-center justify-between mb-3">
                     <div className="flex gap-4 items-center">
-                        <button onClick={toggleLike} className="hover:scale-110 transition-transform active:scale-95">
-                            <HeartIcon className={`w-7 h-7 ${isLiked ? 'text-red-500' : 'text-text-main'}`} fill={isLiked} />
+                        <button onClick={toggleLike} className="group transition-transform active:scale-75">
+                            <HeartIcon className={`w-7 h-7 transition-colors duration-300 ${isLiked ? 'text-red-500 fill-red-500 animate-pop' : 'text-text-main group-hover:text-red-400'}`} fill={isLiked} />
                         </button>
                         
                         <button 
                             onClick={handleRandomReaction}
-                            className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-secondary transition-colors hover:scale-110 active:scale-95"
+                            className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-secondary transition-all hover:scale-110 active:scale-90"
                             title="Send Love & Fire"
                         >
                             <span className="text-xl">❤️‍🔥</span>
@@ -186,13 +197,14 @@ const FeedScreen: React.FC = () => {
     // Sorting by lastViewedAt for PRIORITY DISPLAY logic
     const albums = useLiveQuery(() => data.photoHumans.orderBy('lastViewedAt').reverse().toArray(), []);
     const [viewingStory, setViewingStory] = useState<PhotoHuman | null>(null);
+    const { playClick } = useSound();
 
     if (!albums) return <div className="p-10 text-center text-text-sub animate-pulse">Loading feed...</div>;
     
     if (albums.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center h-full p-10 text-center">
-                <div className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mb-4">
+            <div className="flex flex-col items-center justify-center h-full p-10 text-center animate-fade-in-up">
+                <div className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mb-4 animate-bounce-soft">
                     <span className="text-4xl grayscale opacity-50">📷</span>
                 </div>
                 <h3 className="text-xl font-bold text-text-main mb-2">Feed Empty</h3>
@@ -203,9 +215,12 @@ const FeedScreen: React.FC = () => {
 
     return (
         <div className="w-full h-full bg-primary overflow-y-auto pb-24 scrollbar-hide">
-            <div className="bg-primary border-b border-border-base pt-24 pb-4 px-4">
+            <div className="bg-primary border-b border-border-base pt-24 pb-4 px-4 sticky top-0 z-10 backdrop-blur-md bg-opacity-90">
                 <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 items-center">
-                     <div className="flex flex-col items-center gap-1 flex-shrink-0 cursor-pointer">
+                     <div 
+                        className="flex flex-col items-center gap-1 flex-shrink-0 cursor-pointer active:scale-90 transition-transform"
+                        onClick={playClick}
+                     >
                         <div className="w-20 h-20 rounded-full border-2 border-dashed border-border-base bg-secondary flex items-center justify-center hover:bg-border-base transition-colors relative">
                             <span className="text-2xl text-text-sub">+</span>
                              <div className="absolute bottom-0 right-0 w-6 h-6 bg-accent rounded-full border-2 border-primary flex items-center justify-center">
