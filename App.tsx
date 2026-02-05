@@ -1,12 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import HomeScreen from './components/HomeScreen';
 import CreateScreen from './components/CreateScreen';
 import GalleryViewer from './components/GalleryViewer';
-import GalleryScreen from './components/GalleryScreen'; // Replaced Prompts
-import PromptsScreen from './components/PromptsScreen'; // Kept imports just in case, but view is changed
+import PromptsScreen from './components/PromptsScreen';
 import FeedScreen from './components/FeedScreen';
 import ConsentModal from './components/ConsentModal';
 import Sidebar from './components/Sidebar';
@@ -17,8 +15,8 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { ToastProvider } from './context/ToastContext';
 import { ReactionProvider } from './context/ReactionContext';
 
-// Updated View type to include gallery
-type View = 'home' | 'feed' | 'create' | 'prompts' | 'gallery';
+// Updated View type to remove unused pages
+type View = 'home' | 'feed' | 'create' | 'prompts';
 
 function AppContent() {
   const [view, setView] = useState<View>('home');
@@ -56,16 +54,14 @@ function AppContent() {
             description: albumData.description,
             thumbnail: albumData.thumbnail,
             images: albumData.images,
-            updatedAt: new Date(),
-            lastViewedAt: new Date() // Update view time on save so it jumps to top
+            updatedAt: new Date()
         });
       } else {
         // Create new
         await data.photoHumans.add({
           ...albumData,
           createdAt: new Date(),
-          lastViewedAt: new Date(), // Set initial view time
-          schemaVersion: 1, 
+          schemaVersion: 1, // Set initial schema version
           metadata: {} 
         });
       }
@@ -89,10 +85,6 @@ function AppContent() {
 
   const handleViewAlbum = (album: PhotoHuman) => {
     setSelectedAlbum(album);
-    // Update the lastViewedAt timestamp to bring it to the top of the list
-    if (album.id) {
-        data.photoHumans.update(album.id, { lastViewedAt: new Date() });
-    }
   };
   
   const handleCloseGallery = () => {
@@ -128,7 +120,6 @@ function AppContent() {
             />
         )}
         {view === 'prompts' && <PromptsScreen />}
-        {view === 'gallery' && <GalleryScreen />}
       </main>
       <Footer currentView={view} setView={(v) => {
           if (v === 'create') setAlbumToEdit(undefined);
