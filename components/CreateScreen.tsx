@@ -3,6 +3,7 @@ import type { PhotoHuman } from '../types';
 import ImageEditor from './ImageEditor';
 import { EditIcon, TrashIcon, PlusIcon } from './Icons';
 import { useToast } from '../context/ToastContext';
+import { compressImage } from '../utils/imageUtils';
 
 // Reusable component for lazy loading images with error fallback
 const LazyImage: React.FC<{ src: string; alt: string; className: string; }> = ({ src, alt, className }) => {
@@ -84,13 +85,21 @@ const CreateScreen: React.FC<CreateScreenProps> = ({ initialData, onSave, onCanc
     setIsSaving(true);
 
     try {
+      // Compress Thumbnail
+      const optimizedThumbnail = await compressImage(thumbnail);
+      
+      // Compress Gallery Images
+      // We process them in parallel for speed
+      const optimizedImages = await Promise.all(images.map(img => compressImage(img)));
+
       const albumData = {
         id: initialData?.id, // Pass ID if editing
         name,
         description,
-        thumbnail, // Original quality blob
-        images,    // Original quality blobs
+        thumbnail: optimizedThumbnail, 
+        images: optimizedImages,    
       };
+      
       await onSave(albumData);
     } catch(e) {
       console.error(e);
@@ -207,7 +216,7 @@ const CreateScreen: React.FC<CreateScreenProps> = ({ initialData, onSave, onCanc
             <div className="fixed bottom-0 left-0 right-0 p-6 bg-primary/80 backdrop-blur-xl border-t border-border-base flex justify-center gap-6 z-40">
               <button type="button" onClick={onCancel} className="py-3 px-8 rounded-full text-text-sub font-bold uppercase tracking-wide text-xs hover:bg-secondary transition" disabled={isSaving}>Discard</button>
               <button type="submit" className="py-3 px-12 bg-accent text-primary rounded-full text-xs font-black uppercase tracking-widest transition shadow-2xl hover:scale-105 disabled:opacity-50 disabled:scale-100" disabled={isSaving}>
-                {isSaving ? 'Saving...' : (initialData ? 'Update Collection' : 'Publish Collection')}
+                {isSaving ? 'Optimizing...' : (initialData ? 'Update Collection' : 'Publish Collection')}
               </button>
             </div>
           </form>
