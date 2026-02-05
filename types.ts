@@ -13,9 +13,17 @@ export interface PhotoHuman {
   images: Blob[];
   createdAt: Date;
   updatedAt?: Date;
-  schemaVersion?: number; // Future-proofing for migrations
-  metadata?: Record<string, any>; // Flexible storage for future features
+  lastViewedAt?: Date; // For priority sorting
+  schemaVersion?: number;
+  metadata?: Record<string, any>;
   tiltConfig?: TiltConfig;
+}
+
+export interface MediaAsset {
+  id?: number;
+  blob: Blob;
+  createdAt: Date;
+  type: 'image' | 'video';
 }
 
 export interface Prompt {
