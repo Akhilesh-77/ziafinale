@@ -1,11 +1,11 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import type { PhotoHuman } from '../types';
 import ImageEditor from './ImageEditor';
+import GalleryPicker from './GalleryPicker';
 import { EditIcon, TrashIcon, PlusIcon, TvIcon, CheckIcon } from './Icons';
 import { useToast } from '../context/ToastContext';
 import { compressImage } from '../utils/imageUtils';
 
-// Reusable component for lazy loading images with error fallback
 const LazyImage: React.FC<{ src: string; alt: string; className: string; }> = ({ src, alt, className }) => {
     const [hasError, setHasError] = useState(false);
     return hasError ? (
@@ -31,14 +31,15 @@ const CreateScreen: React.FC<CreateScreenProps> = ({ initialData, onSave, onCanc
   const [is4K, setIs4K] = useState(false);
   const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  
+  // New state for gallery picker
+  const [showGalleryPicker, setShowGalleryPicker] = useState(false);
+  
   const { addToast } = useToast();
   
   const [editingImage, setEditingImage] = useState<{ image: Blob, index: number | 'thumbnail' } | null>(null);
   
   const thumbnailInputRef = useRef<HTMLInputElement>(null);
-  const imagesInputRef = useRef<HTMLInputElement>(null);
-
-  // Clean up object URLs on unmount to prevent leaks (if we were storing them in state, but we store blobs here so it's fine)
 
   const handleThumbnailSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -47,12 +48,9 @@ const CreateScreen: React.FC<CreateScreenProps> = ({ initialData, onSave, onCanc
     }
   };
   
-  const handleImagesSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      // Store original files to ensure lossless quality
-      setImages(prev => [...prev, ...Array.from(files)]);
-    }
+  // Replaced direct file input with GalleryPicker
+  const handleGallerySelect = (selectedBlobs: Blob[]) => {
+      setImages(prev => [...prev, ...selectedBlobs]);
   };
 
   const handleEditorSave = (newImage: Blob) => {
@@ -67,7 +65,6 @@ const CreateScreen: React.FC<CreateScreenProps> = ({ initialData, onSave, onCanc
   };
 
   const handleEditorExtract = (newImage: Blob) => {
-    // Add extracted crop as a new image to the END of the list
     setImages(prev => [...prev, newImage]);
     addToast('Selection added', 'success');
   };
@@ -83,28 +80,18 @@ const CreateScreen: React.FC<CreateScreenProps> = ({ initialData, onSave, onCanc
       return;
     }
     setError('');
-    
-    // 1. Immediately update UI to show "Optimizing..."
     setIsSaving(true);
 
-    // 2. Defer heavy processing to next tick to allow React to render the loading state
     setTimeout(async () => {
         try {
-          // Settings for Compression
-          // Default: 1280px width (faster for mobile), 0.8 quality
-          // 4K Mode: 3840px width, 0.95 quality
           const maxWidth = is4K ? 3840 : 1280;
           const quality = is4K ? 0.95 : 0.8;
 
-          // Compress Thumbnail
           const optimizedThumbnail = await compressImage(thumbnail, maxWidth, quality);
-          
-          // Compress Gallery Images
-          // We process them in parallel for speed
           const optimizedImages = await Promise.all(images.map(img => compressImage(img, maxWidth, quality)));
 
           const albumData = {
-            id: initialData?.id, // Pass ID if editing
+            id: initialData?.id,
             name,
             description,
             thumbnail: optimizedThumbnail, 
@@ -136,7 +123,6 @@ const CreateScreen: React.FC<CreateScreenProps> = ({ initialData, onSave, onCanc
 
             {error && <div className="bg-red-50 text-red-500 border border-red-100 p-4 rounded-xl mb-8 text-sm font-medium">{error}</div>}
 
-            {/* Main Details */}
             <div className="grid md:grid-cols-2 gap-12 mb-16">
                 <div className="space-y-8">
                     <div className="group">
@@ -148,7 +134,6 @@ const CreateScreen: React.FC<CreateScreenProps> = ({ initialData, onSave, onCanc
                         <textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className="w-full bg-secondary border-none rounded-xl p-4 text-text-main placeholder-text-sub focus:ring-2 focus:ring-accent transition outline-none resize-none" placeholder="Add details..." />
                     </div>
 
-                    {/* 4K Toggle */}
                     <div 
                         className={`flex items-center gap-4 p-4 rounded-xl border transition-all cursor-pointer group select-none ${
                             is4K ? 'bg-secondary/50 border-accent shadow-sm' : 'bg-transparent border-border-base hover:border-text-sub'
@@ -172,7 +157,6 @@ const CreateScreen: React.FC<CreateScreenProps> = ({ initialData, onSave, onCanc
                     </div>
                 </div>
 
-                {/* Cover Image */}
                 <div>
                      <label className="block text-xs font-bold uppercase tracking-widest text-text-sub mb-3">Cover Art</label>
                      <input type="file" accept="image/*" onChange={handleThumbnailSelect} className="hidden" ref={thumbnailInputRef} required={!thumbnail} />
@@ -200,27 +184,23 @@ const CreateScreen: React.FC<CreateScreenProps> = ({ initialData, onSave, onCanc
                 </div>
             </div>
 
-            {/* Image Grid */}
             <div className="mb-12">
               <div className="flex items-center justify-between mb-6 border-b border-border-base pb-4">
                   <div className="flex items-baseline gap-3">
                     <label className="text-xl font-bold text-text-main tracking-tight">Gallery</label>
                     <span className="text-sm font-mono text-text-sub">{images.length} items</span>
                   </div>
-                  <button type="button" onClick={() => imagesInputRef.current?.click()} className="text-sm font-bold text-accent hover:underline uppercase tracking-wide">
+                  {/* Changed to open GalleryPicker */}
+                  <button type="button" onClick={() => setShowGalleryPicker(true)} className="text-sm font-bold text-accent hover:underline uppercase tracking-wide">
                     + Add Images
                   </button>
               </div>
-              <input type="file" accept="image/*" multiple onChange={handleImagesSelect} className="hidden" ref={imagesInputRef} required={images.length === 0} />
               
               {images.length > 0 ? (
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-1">
                     {images.map((img, i) => (
                       <div key={i} className="relative group aspect-square bg-secondary overflow-hidden">
-                        {/* Image Container - object-cover for full zoom feel */}
                         <LazyImage src={URL.createObjectURL(img)} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" alt={`item ${i + 1}`} />
-                        
-                        {/* Actions Overlay */}
                         <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                         <div className="absolute bottom-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                           <button type="button" onClick={() => setEditingImage({ image: img, index: i })} className="p-2 bg-primary/90 backdrop-blur text-text-main shadow-lg rounded-full hover:scale-110 transition-transform" title="Edit">
@@ -233,18 +213,17 @@ const CreateScreen: React.FC<CreateScreenProps> = ({ initialData, onSave, onCanc
                       </div>
                     ))}
                     
-                    {/* Add Button Tile */}
-                    <button type="button" onClick={() => imagesInputRef.current?.click()} className="flex flex-col items-center justify-center aspect-square bg-secondary hover:bg-border-base transition-colors group">
+                    <button type="button" onClick={() => setShowGalleryPicker(true)} className="flex flex-col items-center justify-center aspect-square bg-secondary hover:bg-border-base transition-colors group">
                         <PlusIcon className="w-8 h-8 text-text-sub group-hover:text-text-main transition-colors" />
                     </button>
                   </div>
               ) : (
                 <div 
-                    onClick={() => imagesInputRef.current?.click()}
+                    onClick={() => setShowGalleryPicker(true)}
                     className="w-full py-32 flex flex-col items-center justify-center bg-secondary border-2 border-dashed border-border-base rounded-3xl cursor-pointer hover:border-accent transition-colors"
                 >
                     <span className="text-5xl mb-6 opacity-20 grayscale">📂</span>
-                    <span className="text-sm font-bold uppercase tracking-widest text-text-sub">Drag & Drop Images</span>
+                    <span className="text-sm font-bold uppercase tracking-widest text-text-sub">Select from Gallery</span>
                 </div>
               )}
             </div>
@@ -258,6 +237,8 @@ const CreateScreen: React.FC<CreateScreenProps> = ({ initialData, onSave, onCanc
           </form>
         </div>
       </div>
+      
+      {/* Modals */}
       {editingImage && (
         <ImageEditor 
           image={editingImage.image}
@@ -265,6 +246,14 @@ const CreateScreen: React.FC<CreateScreenProps> = ({ initialData, onSave, onCanc
           onSave={handleEditorSave}
           onClose={() => setEditingImage(null)}
         />
+      )}
+      
+      {showGalleryPicker && (
+          <GalleryPicker 
+            onSelect={handleGallerySelect}
+            onClose={() => setShowGalleryPicker(false)}
+            multiple={true}
+          />
       )}
     </>
   );
