@@ -86,12 +86,11 @@ const FeedPost: React.FC<{ album: PhotoHuman }> = ({ album }) => {
         } else {
             await data.likes.put({ albumId: album.id, likedAt: new Date() });
             setIsLiked(true);
-            triggerBurst(); // Trigger burst on like as well
+            triggerBurst(); 
         }
     };
 
     const handleRandomReaction = (e: React.MouseEvent) => {
-        // Trigger burst from the click location
         triggerBurst(e.clientX, e.clientY);
     };
 
@@ -106,7 +105,6 @@ const FeedPost: React.FC<{ album: PhotoHuman }> = ({ album }) => {
 
     return (
         <div className="bg-primary border-b border-border-base pb-4 mb-4">
-            {/* Header */}
             <div className="flex items-center gap-3 p-4">
                 <div className="w-10 h-10 rounded-full bg-secondary overflow-hidden border border-border-base">
                     <img src={imageUrls[0]} alt="avatar" className="w-full h-full object-cover" />
@@ -117,7 +115,6 @@ const FeedPost: React.FC<{ album: PhotoHuman }> = ({ album }) => {
                 </div>
             </div>
 
-            {/* Media Area - Uses Scroll for multiple images, PanZoom for individual interactions */}
             <div 
                 className="relative w-full bg-secondary group transition-all duration-300 ease-in-out" 
                 style={{ aspectRatio: aspectRatio }}
@@ -130,7 +127,6 @@ const FeedPost: React.FC<{ album: PhotoHuman }> = ({ album }) => {
                 >
                     {imageUrls.map((url, index) => (
                         <div key={index} className="w-full h-full flex-shrink-0 snap-center relative">
-                            {/* Elastic Zoom for Feed behavior */}
                             <PanZoomImage 
                                 src={url} 
                                 alt={`${album.name} ${index + 1}`} 
@@ -157,7 +153,6 @@ const FeedPost: React.FC<{ album: PhotoHuman }> = ({ album }) => {
                 )}
             </div>
 
-            {/* Actions */}
             <div className="p-4">
                 <div className="flex items-center justify-between mb-3">
                     <div className="flex gap-4 items-center">
@@ -165,7 +160,6 @@ const FeedPost: React.FC<{ album: PhotoHuman }> = ({ album }) => {
                             <HeartIcon className={`w-7 h-7 ${isLiked ? 'text-red-500' : 'text-text-main'}`} fill={isLiked} />
                         </button>
                         
-                        {/* Random Reaction Button */}
                         <button 
                             onClick={handleRandomReaction}
                             className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-secondary transition-colors hover:scale-110 active:scale-95"
@@ -173,8 +167,6 @@ const FeedPost: React.FC<{ album: PhotoHuman }> = ({ album }) => {
                         >
                             <span className="text-xl">❤️‍🔥</span>
                         </button>
-
-                        <svg className="w-7 h-7 text-text-main hover:text-text-sub transition-colors cursor-pointer" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>
                     </div>
                 </div>
                 
@@ -191,7 +183,8 @@ const FeedPost: React.FC<{ album: PhotoHuman }> = ({ album }) => {
 };
 
 const FeedScreen: React.FC = () => {
-    const albums = useLiveQuery(() => data.photoHumans.orderBy('createdAt').reverse().toArray(), []);
+    // Sorting by lastViewedAt for PRIORITY DISPLAY logic
+    const albums = useLiveQuery(() => data.photoHumans.orderBy('lastViewedAt').reverse().toArray(), []);
     const [viewingStory, setViewingStory] = useState<PhotoHuman | null>(null);
 
     if (!albums) return <div className="p-10 text-center text-text-sub animate-pulse">Loading feed...</div>;
@@ -210,7 +203,6 @@ const FeedScreen: React.FC = () => {
 
     return (
         <div className="w-full h-full bg-primary overflow-y-auto pb-24 scrollbar-hide">
-            {/* Stories Section */}
             <div className="bg-primary border-b border-border-base pt-24 pb-4 px-4">
                 <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 items-center">
                      <div className="flex flex-col items-center gap-1 flex-shrink-0 cursor-pointer">
@@ -233,14 +225,12 @@ const FeedScreen: React.FC = () => {
                 </div>
             </div>
 
-            {/* Posts Section */}
             <div className="max-w-xl mx-auto md:py-8">
                 {albums.map(album => (
                     <FeedPost key={album.id} album={album} />
                 ))}
             </div>
 
-            {/* Story Overlay */}
             {viewingStory && (
                 <StoryViewer 
                     story={viewingStory} 
