@@ -63,6 +63,25 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, signature }) => {
             
             {view === 'menu' && (
                 <div className="space-y-6 animate-fade-in">
+                    {/* NEW: Use Zia External Link Button */}
+                    <a 
+                        href="https://aistudio.google.com/apps/drive/17KnveoK-ru6mEk2JGR54iUuuE6-pDSWp?showPreview=true&showAssistant=true&appParams=home"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full p-4 bg-gradient-to-r from-violet-600 to-indigo-600 rounded-xl shadow-lg border border-white/10 flex items-center justify-between group transition-all hover:scale-[1.02] hover:shadow-xl"
+                    >
+                        <div className="flex items-center gap-3 text-white">
+                            <span className="text-2xl">✨</span>
+                            <div className="text-left">
+                                <h3 className="text-sm font-black uppercase tracking-wider">Use ZIA</h3>
+                                <p className="text-[10px] opacity-80 font-medium">Launch External AI App</p>
+                            </div>
+                        </div>
+                        <ChevronRightIcon className="w-5 h-5 text-white/70 group-hover:translate-x-1 transition-transform" />
+                    </a>
+
+                    <div className="w-full h-px bg-border-base/50 my-2" />
+
                     {/* Documentation Button */}
                     <button 
                         onClick={() => setView('documentation')}
