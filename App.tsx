@@ -1,9 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import HomeScreen from './components/HomeScreen';
 import CreateScreen from './components/CreateScreen';
 import GalleryViewer from './components/GalleryViewer';
+import GalleryScreen from './components/GalleryScreen';
 import PromptsScreen from './components/PromptsScreen';
 import FeedScreen from './components/FeedScreen';
 import ConsentModal from './components/ConsentModal';
@@ -15,8 +17,8 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { ToastProvider } from './context/ToastContext';
 import { ReactionProvider } from './context/ReactionContext';
 
-// Updated View type to remove unused pages
-type View = 'home' | 'feed' | 'create' | 'prompts';
+// Updated View type to include prompts
+type View = 'home' | 'feed' | 'create' | 'gallery' | 'prompts';
 
 function AppContent() {
   const [view, setView] = useState<View>('home');
@@ -54,14 +56,16 @@ function AppContent() {
             description: albumData.description,
             thumbnail: albumData.thumbnail,
             images: albumData.images,
-            updatedAt: new Date()
+            updatedAt: new Date(),
+            lastViewedAt: new Date() // Priority update: Edit moves it to top
         });
       } else {
         // Create new
         await data.photoHumans.add({
           ...albumData,
           createdAt: new Date(),
-          schemaVersion: 1, // Set initial schema version
+          lastViewedAt: new Date(), // New items start at top
+          schemaVersion: 1, 
           metadata: {} 
         });
       }
@@ -85,13 +89,20 @@ function AppContent() {
 
   const handleViewAlbum = (album: PhotoHuman) => {
     setSelectedAlbum(album);
+    // FEATURE 1: Collection Priority Logic
+    // When a user clicks a collection, update lastViewedAt.
+    // Since HomeScreen and FeedScreen use liveQuery with orderBy('lastViewedAt'),
+    // this instantly reorders the lists in both views.
+    if (album.id) {
+        data.photoHumans.update(album.id, { lastViewedAt: new Date() });
+    }
   };
   
   const handleCloseGallery = () => {
     setSelectedAlbum(null);
   };
 
-  if (isCheckingConsent) return null; // Or a loading spinner
+  if (isCheckingConsent) return null; 
 
   return (
     <div className="h-full w-full bg-primary text-text-main flex flex-col font-sans antialiased overflow-hidden transition-colors duration-300">
@@ -119,8 +130,10 @@ function AppContent() {
                 onCancel={handleCancelCreate} 
             />
         )}
+        {view === 'gallery' && <GalleryScreen />}
         {view === 'prompts' && <PromptsScreen />}
       </main>
+      
       <Footer currentView={view} setView={(v) => {
           if (v === 'create') setAlbumToEdit(undefined);
           setView(v);
