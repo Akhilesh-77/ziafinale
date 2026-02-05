@@ -36,9 +36,10 @@ export const ReactionProvider: React.FC<{ children: ReactNode }> = ({ children }
             emoji,
             x: startX,
             y: startY,
-            velocity: 100 + Math.random() * 250,
-            angle: (Math.random() * 120) - 60, // Spread upwards more naturally
-            scale: 0.5 + Math.random(),
+            // Increased velocity/force for mobile feel
+            velocity: 250 + Math.random() * 400, 
+            angle: (Math.random() * 140) - 70, // Wider spread
+            scale: 0.8 + Math.random() * 0.8, // Slightly larger particles
         });
     }
     return newReactions;
@@ -56,7 +57,7 @@ export const ReactionProvider: React.FC<{ children: ReactNode }> = ({ children }
     
     // Pick 3-4 random emojis from the set
     const selectedEmojis = [];
-    const count = 3 + Math.floor(Math.random() * 2);
+    const count = 4 + Math.floor(Math.random() * 3);
     for(let i=0; i<count; i++) {
         selectedEmojis.push(BURST_EMOJIS[Math.floor(Math.random() * BURST_EMOJIS.length)]);
     }
@@ -100,13 +101,13 @@ const EmojiParticle: React.FC<{ reaction: Reaction }> = ({ reaction }) => {
     const [style, setStyle] = useState({});
     
     useEffect(() => {
-        const tx = (Math.random() - 0.5) * 200; // Spread X
+        const tx = (Math.random() - 0.5) * 300; // Wider Spread X
         
         requestAnimationFrame(() => {
             setStyle({
                 transform: `translate(${tx}px, -${reaction.velocity}px) rotate(${reaction.angle}deg) scale(${reaction.scale})`,
                 opacity: 0,
-                transition: `transform ${1.5 + Math.random()}s cubic-bezier(0, .9, .57, 1), opacity 1.5s ease-in`
+                transition: `transform ${1.5 + Math.random()}s cubic-bezier(0, .9, .57, 1), opacity 1.2s ease-in`
             });
         });
     }, [reaction]);
