@@ -138,7 +138,7 @@ function AppContent() {
                 onCancel={handleCancelCreate} 
             />
         )}
-        {view === 'gallery' && <GalleryScreen />}
+        {view === 'gallery' && <GalleryScreen onViewAlbum={handleViewAlbum} />}
         {view === 'prompts' && <PromptsScreen />}
       </main>
       
