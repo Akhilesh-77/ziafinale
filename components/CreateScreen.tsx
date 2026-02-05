@@ -76,43 +76,49 @@ const CreateScreen: React.FC<CreateScreenProps> = ({ initialData, onSave, onCanc
     setImages(images.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = useCallback(async (e: React.FormEvent) => {
+  const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !thumbnail || images.length === 0) {
       setError('Collection Name, Cover Image, and at least one Item are required.');
       return;
     }
     setError('');
+    
+    // 1. Immediately update UI to show "Optimizing..."
     setIsSaving(true);
 
-    try {
-      // Settings for Compression
-      // Default: 1600px width, 0.8 quality
-      // 4K Mode: 3840px width, 0.95 quality
-      const maxWidth = is4K ? 3840 : 1600;
-      const quality = is4K ? 0.95 : 0.8;
+    // 2. Defer heavy processing to next tick to allow React to render the loading state
+    setTimeout(async () => {
+        try {
+          // Settings for Compression
+          // Default: 1280px width (faster for mobile), 0.8 quality
+          // 4K Mode: 3840px width, 0.95 quality
+          const maxWidth = is4K ? 3840 : 1280;
+          const quality = is4K ? 0.95 : 0.8;
 
-      // Compress Thumbnail
-      const optimizedThumbnail = await compressImage(thumbnail, maxWidth, quality);
-      
-      // Compress Gallery Images
-      // We process them in parallel for speed
-      const optimizedImages = await Promise.all(images.map(img => compressImage(img, maxWidth, quality)));
+          // Compress Thumbnail
+          const optimizedThumbnail = await compressImage(thumbnail, maxWidth, quality);
+          
+          // Compress Gallery Images
+          // We process them in parallel for speed
+          const optimizedImages = await Promise.all(images.map(img => compressImage(img, maxWidth, quality)));
 
-      const albumData = {
-        id: initialData?.id, // Pass ID if editing
-        name,
-        description,
-        thumbnail: optimizedThumbnail, 
-        images: optimizedImages,    
-      };
-      
-      await onSave(albumData);
-    } catch(e) {
-      console.error(e);
-      setError("An error occurred while saving. Please try again.");
-      setIsSaving(false);
-    }
+          const albumData = {
+            id: initialData?.id, // Pass ID if editing
+            name,
+            description,
+            thumbnail: optimizedThumbnail, 
+            images: optimizedImages,    
+          };
+          
+          await onSave(albumData);
+        } catch(e) {
+          console.error(e);
+          setError("An error occurred while saving. Please try again.");
+          setIsSaving(false);
+        }
+    }, 50);
+
   }, [name, description, thumbnail, images, onSave, initialData, is4K]);
   
   const thumbPreview = thumbnail ? URL.createObjectURL(thumbnail) : null;
