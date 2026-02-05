@@ -214,11 +214,6 @@ const TiltCard: React.FC<{
            <div className="absolute bottom-4 right-4 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 z-10">
              <span className="bg-white text-black text-xs font-bold px-4 py-2 rounded-full shadow-lg">View Gallery</span>
            </div>
-
-           {/* Emoji Reaction Button in bottom Left */}
-           <div className="absolute bottom-4 left-4 z-20">
-               <ReactionPicker />
-           </div>
         </div>
         
         {/* Fake Depth Layers for "VR" feel */}
