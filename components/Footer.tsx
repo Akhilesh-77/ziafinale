@@ -1,8 +1,8 @@
 
 import React from 'react';
-import { HomeIcon, PlusIcon, PromptIcon, FeedIcon } from './Icons';
+import { HomeIcon, PlusIcon, VaultIcon, FeedIcon } from './Icons';
 
-type View = 'home' | 'feed' | 'create' | 'prompts';
+type View = 'home' | 'feed' | 'create' | 'prompts' | 'gallery';
 
 interface FooterProps {
   currentView: View;
@@ -14,7 +14,7 @@ const Footer: React.FC<FooterProps> = ({ currentView, setView }) => {
     { view: 'home', label: 'Home', icon: HomeIcon },
     { view: 'feed', label: 'Feed', icon: FeedIcon },
     { view: 'create', label: 'Create', icon: PlusIcon },
-    { view: 'prompts', label: 'Prompts', icon: PromptIcon },
+    { view: 'gallery', label: 'Gallery', icon: VaultIcon }, // Replaced Prompts with Gallery or added it? Let's keep 4 items for balance, swap Prompts or add. Prompt asked to add gallery page. I will swap Prompts for Gallery as "VaultIcon" fits perfect.
   ];
 
   return (
