@@ -9,7 +9,10 @@ import { compressImage } from '../utils/imageUtils';
 const GalleryScreen: React.FC = () => {
   const { addToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Robust Import States
   const [isImporting, setIsImporting] = useState(false);
+  const [progress, setProgress] = useState(0);
 
   const assets = useLiveQuery(() => data.mediaAssets.orderBy('createdAt').reverse().toArray(), []);
 
@@ -18,23 +21,36 @@ const GalleryScreen: React.FC = () => {
     if (!files || files.length === 0) return;
     
     setIsImporting(true);
+    setProgress(0);
+    
+    const BATCH_SIZE = 3;
+    const fileArray = Array.from(files);
     let count = 0;
 
     try {
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-            const optimized = await compressImage(file, 2000, 0.85);
-            await data.mediaAssets.add({
-                blob: optimized,
-                createdAt: new Date(),
-                type: 'image'
-            });
-            count++;
+        for (let i = 0; i < fileArray.length; i += BATCH_SIZE) {
+            const batch = fileArray.slice(i, i + BATCH_SIZE);
+            
+            await Promise.all(batch.map(async (file) => {
+                try {
+                    const optimized = await compressImage(file, 2000, 0.85);
+                    await data.mediaAssets.add({
+                        blob: optimized,
+                        createdAt: new Date(),
+                        type: 'image'
+                    });
+                    count++;
+                } catch(e) { console.warn("Skip", e); }
+            }));
+            
+            setProgress(Math.round(((i + batch.length) / fileArray.length) * 100));
+            // Yield to main thread
+            await new Promise(r => setTimeout(r, 50));
         }
-        addToast(`Imported ${count} photos to ZIA Vault`, 'success');
+        addToast(`Secured ${count} items in Vault`, 'success');
     } catch (err) {
         console.error(err);
-        addToast('Failed to import photos', 'error');
+        addToast('Import partially failed', 'error');
     } finally {
         setIsImporting(false);
         if (fileInputRef.current) fileInputRef.current.value = '';
@@ -53,8 +69,8 @@ const GalleryScreen: React.FC = () => {
         {/* Header */}
         <div className="flex justify-between items-end mb-8 border-b-2 border-border-base pb-6">
           <div>
-              <h2 className="text-4xl font-black tracking-tighter uppercase">ZIA Vault</h2>
-              <p className="text-xs text-text-sub font-mono mt-2">Internal Media Storage</p>
+              <h2 className="text-4xl font-black tracking-tighter uppercase">ZIA Lock</h2>
+              <p className="text-xs text-text-sub font-mono mt-2">Secured Device Storage</p>
           </div>
           <button
             onClick={() => fileInputRef.current?.click()}
@@ -62,7 +78,10 @@ const GalleryScreen: React.FC = () => {
             disabled={isImporting}
           >
              {isImporting ? (
-                 <span className="text-xs font-bold animate-pulse">Processing...</span>
+                 <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"/>
+                    <span className="text-xs font-bold">{progress}%</span>
+                 </div>
              ) : (
                  <>
                     <PlusIcon className="w-6 h-6" />
@@ -94,9 +113,9 @@ const GalleryScreen: React.FC = () => {
                 <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-secondary mb-6">
                     <VaultIcon className="w-10 h-10 opacity-30" />
                 </div>
-                <h3 className="text-2xl font-bold mb-3 text-text-main">Gallery Empty</h3>
+                <h3 className="text-2xl font-bold mb-3 text-text-main">Vault Empty</h3>
                 <p className="text-text-sub mb-8 max-w-md mx-auto text-sm">
-                    This is your private in-app gallery. Import photos here to use them quickly across the app.
+                    This is your private in-app gallery. Import photos here to access them securely within ZIA.
                 </p>
                 <button
                     onClick={() => fileInputRef.current?.click()}
