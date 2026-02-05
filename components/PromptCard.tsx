@@ -5,6 +5,7 @@ import { data } from '../services/data';
 import { useToast } from '../context/ToastContext';
 import { copyToClipboard } from '../utils/copyToClipboard';
 import { EditIcon, TrashIcon } from './Icons';
+import { useSound } from '../context/SoundContext';
 
 interface PromptCardProps {
   prompt: Prompt;
@@ -13,6 +14,7 @@ interface PromptCardProps {
 
 const PromptCard: React.FC<PromptCardProps> = ({ prompt, onEdit }) => {
   const { addToast } = useToast();
+  const { playSuccess, playClick } = useSound();
   const [isCopied, setIsCopied] = useState(false);
   const pressTimer = useRef<number | null>(null);
 
@@ -20,14 +22,16 @@ const PromptCard: React.FC<PromptCardProps> = ({ prompt, onEdit }) => {
     const success = copyToClipboard(prompt.content);
     if (success) {
         setIsCopied(true);
+        playSuccess();
         addToast('Copied to clipboard!', 'success');
         setTimeout(() => setIsCopied(false), 2000);
     } else {
         addToast('Failed to copy', 'error');
     }
-  }, [prompt.content, addToast]);
+  }, [prompt.content, addToast, playSuccess]);
 
   const handleDelete = async () => {
+    playClick();
     if (confirm(`Are you sure you want to delete "${prompt.title}"?`)) {
       try {
         if (prompt.id) {
@@ -44,11 +48,10 @@ const PromptCard: React.FC<PromptCardProps> = ({ prompt, onEdit }) => {
   const handlePressStart = () => {
     pressTimer.current = window.setTimeout(() => {
       handleCopy();
-      // Optional: Add haptic feedback if available
       if (navigator.vibrate) {
         navigator.vibrate(50);
       }
-    }, 500); // 500ms for long press
+    }, 500);
   };
 
   const handlePressEnd = () => {
@@ -59,7 +62,7 @@ const PromptCard: React.FC<PromptCardProps> = ({ prompt, onEdit }) => {
 
   return (
     <div 
-      className="bg-primary rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 p-5 flex flex-col h-full border border-border-base"
+      className="bg-primary rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 p-5 flex flex-col h-full border border-border-base animate-fade-in-up"
       onTouchStart={handlePressStart}
       onTouchEnd={handlePressEnd}
       onMouseDown={handlePressStart}
@@ -80,16 +83,14 @@ const PromptCard: React.FC<PromptCardProps> = ({ prompt, onEdit }) => {
         
         <button
             onClick={handleCopy}
-            className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-all duration-200 ${
+            className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-all duration-200 active:scale-95 ${
                 isCopied 
                 ? 'bg-green-100 text-green-700' 
                 : 'bg-secondary text-text-sub hover:bg-border-base'
             }`}
         >
             {isCopied ? (
-                <>
-                    <span>✓</span> Copied
-                </>
+                <span className="animate-pop">✓ Copied</span>
             ) : (
                 <>
                     <span>📋</span> Copy
@@ -98,10 +99,10 @@ const PromptCard: React.FC<PromptCardProps> = ({ prompt, onEdit }) => {
         </button>
 
         <div className="flex gap-1">
-          <button onClick={() => onEdit(prompt)} className="p-2 text-text-sub hover:text-text-main hover:bg-secondary rounded-lg transition-colors">
+          <button onClick={() => { playClick(); onEdit(prompt); }} className="p-2 text-text-sub hover:text-text-main hover:bg-secondary rounded-lg transition-colors active:scale-90">
             <EditIcon className="w-5 h-5" />
           </button>
-          <button onClick={handleDelete} className="p-2 text-text-sub hover:text-red-500 hover:bg-secondary rounded-lg transition-colors">
+          <button onClick={handleDelete} className="p-2 text-text-sub hover:text-red-500 hover:bg-secondary rounded-lg transition-colors active:scale-90">
             <TrashIcon className="w-5 h-5" />
           </button>
         </div>
