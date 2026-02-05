@@ -13,6 +13,7 @@ import { data } from './services/data';
 import { ThemeProvider } from './context/ThemeContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import { ToastProvider } from './context/ToastContext';
+import { ReactionProvider } from './context/ReactionContext';
 
 // Updated View type to remove unused pages
 type View = 'home' | 'feed' | 'create' | 'prompts';
@@ -137,7 +138,9 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider>
         <ToastProvider>
-          <AppContent />
+          <ReactionProvider>
+            <AppContent />
+          </ReactionProvider>
         </ToastProvider>
       </ThemeProvider>
     </ErrorBoundary>
