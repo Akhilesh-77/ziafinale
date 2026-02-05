@@ -16,6 +16,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import { ToastProvider } from './context/ToastContext';
 import { ReactionProvider } from './context/ReactionContext';
+import { SoundProvider, useSound } from './context/SoundContext';
 
 // Updated View type to include 5 tabs
 type View = 'home' | 'feed' | 'create' | 'gallery' | 'prompts';
@@ -25,6 +26,8 @@ function AppContent() {
   const [selectedAlbum, setSelectedAlbum] = useState<PhotoHuman | null>(null);
   const [albumToEdit, setAlbumToEdit] = useState<PhotoHuman | undefined>(undefined);
   
+  const { playSuccess, playTab } = useSound();
+
   // Consent and Menu States
   const [hasConsent, setHasConsent] = useState(false);
   const [userSignature, setUserSignature] = useState<string>('');
@@ -45,6 +48,7 @@ function AppContent() {
       localStorage.setItem('zia_consent_signature', signatureDataUrl);
       setUserSignature(signatureDataUrl);
       setHasConsent(true);
+      playSuccess(); // Audio feedback for sign-in
   };
 
   const handleSaveAlbum = async (albumData: Omit<PhotoHuman, 'createdAt'>) => {
@@ -69,6 +73,7 @@ function AppContent() {
           metadata: {} 
         });
       }
+      playSuccess(); // Audio feedback
       setAlbumToEdit(undefined);
       setView('home');
     } catch (error) {
@@ -90,8 +95,6 @@ function AppContent() {
   const handleViewAlbum = (album: PhotoHuman) => {
     setSelectedAlbum(album);
     // FEATURE 1: Collection Priority Logic (Dynamic Sorting)
-    // When a user clicks a collection, update lastViewedAt.
-    // HomeScreen and FeedScreen sort by this field, so priority updates instantly.
     if (album.id) {
         data.photoHumans.update(album.id, { lastViewedAt: new Date() });
     }
@@ -99,6 +102,12 @@ function AppContent() {
   
   const handleCloseGallery = () => {
     setSelectedAlbum(null);
+  };
+  
+  const handleViewChange = (v: View) => {
+      if (view !== v) playTab(); // Audio feedback on tab switch
+      if (v === 'create') setAlbumToEdit(undefined);
+      setView(v);
   };
 
   if (isCheckingConsent) return null; 
@@ -133,10 +142,7 @@ function AppContent() {
         {view === 'prompts' && <PromptsScreen />}
       </main>
       
-      <Footer currentView={view} setView={(v) => {
-          if (v === 'create') setAlbumToEdit(undefined);
-          setView(v);
-      }} />
+      <Footer currentView={view} setView={handleViewChange} />
 
       {selectedAlbum && (
         <GalleryViewer album={selectedAlbum} onClose={handleCloseGallery} />
@@ -149,11 +155,13 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider>
-        <ToastProvider>
-          <ReactionProvider>
-            <AppContent />
-          </ReactionProvider>
-        </ToastProvider>
+        <SoundProvider>
+            <ToastProvider>
+            <ReactionProvider>
+                <AppContent />
+            </ReactionProvider>
+            </ToastProvider>
+        </SoundProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );
