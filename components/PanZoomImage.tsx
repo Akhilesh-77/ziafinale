@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect } from 'react';
 
 interface PanZoomImageProps {
@@ -59,7 +58,15 @@ const PanZoomImage: React.FC<PanZoomImageProps> = ({
   };
 
   const handlePointerDown = (e: React.PointerEvent) => {
-    e.preventDefault(); // Prevent default browser actions
+    // If we are at scale 1, allow native behaviors (like scrolling the carousel)
+    // We only take over if user pinches (2 fingers) or if already zoomed.
+    if (transform.scale === 1 && gesture.current.pointers.size === 0) {
+        // Just track it, don't capture yet.
+        gesture.current.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        return;
+    }
+
+    e.preventDefault(); 
     if (onInteractionStart) onInteractionStart();
     setIsInteracting(true);
 
@@ -83,8 +90,14 @@ const PanZoomImage: React.FC<PanZoomImageProps> = ({
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!gesture.current.pointers.has(e.pointerId)) return;
-    e.preventDefault();
+    
+    // If we haven't started interacting (e.g. scale 1 scroll), update coord but don't block
+    if (!isInteracting && transform.scale === 1) {
+        gesture.current.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        return;
+    }
 
+    e.preventDefault();
     gesture.current.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     const pointers = Array.from(gesture.current.pointers.values());
 
@@ -108,16 +121,18 @@ const PanZoomImage: React.FC<PanZoomImageProps> = ({
     gesture.current.pointers.delete(e.pointerId);
     
     if (gesture.current.pointers.size === 0) {
-        setIsInteracting(false);
-        if (onInteractionEnd) onInteractionEnd();
+        if (isInteracting) {
+            setIsInteracting(false);
+            if (onInteractionEnd) onInteractionEnd();
 
-        if (elastic) {
-            // Snap back for elastic mode
-            setTransform({ scale: 1, x: 0, y: 0 });
-        } else {
-            // Boundary checks for normal mode
-            if (transform.scale <= 1) {
+            if (elastic) {
+                // Snap back for elastic mode
                 setTransform({ scale: 1, x: 0, y: 0 });
+            } else {
+                // Boundary checks for normal mode
+                if (transform.scale <= 1) {
+                    setTransform({ scale: 1, x: 0, y: 0 });
+                }
             }
         }
     } else {
@@ -133,19 +148,27 @@ const PanZoomImage: React.FC<PanZoomImageProps> = ({
   };
 
   const handleDoubleTap = (e: React.MouseEvent) => {
-      if (elastic) return; // Elastic usually doesn't double tap to lock zoom
+      // Force interaction mode on zoom
       if (transform.scale > 1) {
           setTransform({ scale: 1, x: 0, y: 0 });
+          if (onInteractionEnd) onInteractionEnd();
+          setIsInteracting(false);
       } else {
           // Zoom to point? For now just center zoom
           setTransform({ scale: 2.5, x: 0, y: 0 });
+          if (onInteractionStart) onInteractionStart();
+          setIsInteracting(true);
       }
   };
+
+  // Determine touch action: 'none' blocks scroll (needed for pan), 'pan-x pan-y' allows scroll (needed for feed)
+  const touchActionStyle = transform.scale > 1 ? 'none' : 'pan-x pan-y';
 
   return (
     <div 
         ref={containerRef}
-        className={`relative overflow-hidden touch-none select-none ${className}`}
+        className={`relative overflow-hidden select-none ${className}`}
+        style={{ touchAction: touchActionStyle }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
