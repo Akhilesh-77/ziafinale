@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import type { PhotoHuman } from '../types';
 import ImageEditor from './ImageEditor';
-import { EditIcon, TrashIcon, PlusIcon } from './Icons';
+import { EditIcon, TrashIcon, PlusIcon, TvIcon, CheckIcon } from './Icons';
 import { useToast } from '../context/ToastContext';
 import { compressImage } from '../utils/imageUtils';
 
@@ -28,6 +28,7 @@ const CreateScreen: React.FC<CreateScreenProps> = ({ initialData, onSave, onCanc
   const [description, setDescription] = useState(initialData?.description || '');
   const [thumbnail, setThumbnail] = useState<Blob | null>(initialData?.thumbnail || null);
   const [images, setImages] = useState<(File | Blob)[]>(initialData?.images || []);
+  const [is4K, setIs4K] = useState(false);
   const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const { addToast } = useToast();
@@ -85,12 +86,18 @@ const CreateScreen: React.FC<CreateScreenProps> = ({ initialData, onSave, onCanc
     setIsSaving(true);
 
     try {
+      // Settings for Compression
+      // Default: 1600px width, 0.8 quality
+      // 4K Mode: 3840px width, 0.95 quality
+      const maxWidth = is4K ? 3840 : 1600;
+      const quality = is4K ? 0.95 : 0.8;
+
       // Compress Thumbnail
-      const optimizedThumbnail = await compressImage(thumbnail);
+      const optimizedThumbnail = await compressImage(thumbnail, maxWidth, quality);
       
       // Compress Gallery Images
       // We process them in parallel for speed
-      const optimizedImages = await Promise.all(images.map(img => compressImage(img)));
+      const optimizedImages = await Promise.all(images.map(img => compressImage(img, maxWidth, quality)));
 
       const albumData = {
         id: initialData?.id, // Pass ID if editing
@@ -106,7 +113,7 @@ const CreateScreen: React.FC<CreateScreenProps> = ({ initialData, onSave, onCanc
       setError("An error occurred while saving. Please try again.");
       setIsSaving(false);
     }
-  }, [name, description, thumbnail, images, onSave, initialData]);
+  }, [name, description, thumbnail, images, onSave, initialData, is4K]);
   
   const thumbPreview = thumbnail ? URL.createObjectURL(thumbnail) : null;
 
@@ -133,6 +140,29 @@ const CreateScreen: React.FC<CreateScreenProps> = ({ initialData, onSave, onCanc
                     <div>
                         <label htmlFor="description" className="block text-xs font-bold uppercase tracking-widest text-text-sub mb-3">Description</label>
                         <textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className="w-full bg-secondary border-none rounded-xl p-4 text-text-main placeholder-text-sub focus:ring-2 focus:ring-accent transition outline-none resize-none" placeholder="Add details..." />
+                    </div>
+
+                    {/* 4K Toggle */}
+                    <div 
+                        className={`flex items-center gap-4 p-4 rounded-xl border transition-all cursor-pointer group select-none ${
+                            is4K ? 'bg-secondary/50 border-accent shadow-sm' : 'bg-transparent border-border-base hover:border-text-sub'
+                        }`} 
+                        onClick={() => setIs4K(!is4K)}
+                    >
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center border-2 transition-colors ${is4K ? 'bg-accent border-accent text-primary' : 'border-border-base text-text-sub group-hover:border-text-sub'}`}>
+                            <TvIcon className="w-6 h-6" />
+                        </div>
+                        <div className="flex-1">
+                            <h3 className={`font-bold text-sm transition-colors ${is4K ? 'text-accent' : 'text-text-main'}`}>
+                                4K Ultra HD
+                            </h3>
+                            <p className="text-xs text-text-sub">
+                                {is4K ? 'Uploads will be processed in high fidelity (3840px).' : 'Standard quality optimized for speed.'}
+                            </p>
+                        </div>
+                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${is4K ? 'border-accent bg-accent' : 'border-border-base'}`}>
+                            {is4K && <CheckIcon className="w-4 h-4 text-primary" />}
+                        </div>
                     </div>
                 </div>
 
