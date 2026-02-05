@@ -6,8 +6,13 @@ import { PlusIcon, VaultIcon } from './Icons';
 import { useToast } from '../context/ToastContext';
 import { compressImage } from '../utils/imageUtils';
 import { useSound } from '../context/SoundContext';
+import type { PhotoHuman } from '../types';
 
-const GalleryScreen: React.FC = () => {
+interface GalleryScreenProps {
+    onViewAlbum: (album: PhotoHuman) => void;
+}
+
+const GalleryScreen: React.FC<GalleryScreenProps> = ({ onViewAlbum }) => {
   const { addToast } = useToast();
   const { playClick, playSuccess } = useSound();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -16,8 +21,35 @@ const GalleryScreen: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
 
-  // Fetch ALL internal assets (Unified View)
-  const assets = useLiveQuery(() => data.mediaAssets.orderBy('createdAt').reverse().toArray(), []);
+  // Fetch Collections instead of raw assets
+  const collections = useLiveQuery(() => data.photoHumans.toArray(), []);
+
+  // Performance-Safe Shuffle Logic
+  // Flattens all images from all collections, shuffles them, and limits display count.
+  const discoveryImages = useMemo(() => {
+      if (!collections) return [];
+
+      // 1. Flatten
+      const allImages: { blob: Blob; album: PhotoHuman; id: string }[] = [];
+      collections.forEach(album => {
+          album.images.forEach((img, idx) => {
+              allImages.push({
+                  blob: img,
+                  album: album,
+                  id: `${album.id}-${idx}`
+              });
+          });
+      });
+
+      // 2. Shuffle (Fisher-Yates)
+      for (let i = allImages.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [allImages[i], allImages[j]] = [allImages[j], allImages[i]];
+      }
+
+      // 3. Limit to safe number (60) to prevent crash
+      return allImages.slice(0, 60);
+  }, [collections]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -27,7 +59,7 @@ const GalleryScreen: React.FC = () => {
     setIsUploading(true);
     setProgress(0);
     
-    const BATCH_SIZE = 3; // Keep chunking for UI responsiveness during upload
+    const BATCH_SIZE = 3; 
     const fileArray = Array.from(files);
     let count = 0;
 
@@ -51,7 +83,7 @@ const GalleryScreen: React.FC = () => {
             await new Promise(r => setTimeout(r, 50));
         }
         playSuccess();
-        addToast(`Uploaded ${count} images`, 'success');
+        addToast(`Uploaded ${count} images to Storage`, 'success');
     } catch (err) {
         console.error(err);
         addToast('Upload failed', 'error');
@@ -61,9 +93,19 @@ const GalleryScreen: React.FC = () => {
     }
   };
 
-  const LazyGridImage: React.FC<{ blob: Blob }> = ({ blob }) => {
-     const url = useMemo(() => URL.createObjectURL(blob), [blob]);
-     return <img src={url} className="w-full h-full object-cover transition-transform hover:scale-110 duration-300" loading="lazy" />;
+  const LazyGridImage: React.FC<{ item: { blob: Blob; album: PhotoHuman } }> = ({ item }) => {
+     const url = useMemo(() => URL.createObjectURL(item.blob), [item.blob]);
+     return (
+        <img 
+            src={url} 
+            className="w-full h-full object-cover transition-transform hover:scale-110 duration-300" 
+            loading="lazy" 
+            onClick={() => {
+                playClick();
+                onViewAlbum(item.album);
+            }}
+        />
+     );
   };
 
   return (
@@ -73,13 +115,14 @@ const GalleryScreen: React.FC = () => {
         {/* Header */}
         <div className="flex justify-between items-end mb-8 border-b-2 border-border-base pb-6">
           <div>
-              <h2 className="text-4xl font-black tracking-tighter uppercase">My Gallery</h2>
-              <p className="text-xs text-text-sub font-mono mt-2">All Uploaded Images</p>
+              <h2 className="text-4xl font-black tracking-tighter uppercase">Discovery</h2>
+              <p className="text-xs text-text-sub font-mono mt-2">Randomized Collection Memories</p>
           </div>
           <button
             onClick={() => fileInputRef.current?.click()}
             className="p-4 rounded-full bg-accent text-primary hover:scale-110 transition duration-300 shadow-xl flex items-center gap-2 active:scale-95"
             disabled={isUploading}
+            title="Upload to Storage"
           >
              {isUploading ? (
                  <div className="flex items-center gap-2">
@@ -104,12 +147,17 @@ const GalleryScreen: React.FC = () => {
         </div>
 
         {/* Gallery Grid */}
-        {assets && assets.length > 0 ? (
+        {discoveryImages && discoveryImages.length > 0 ? (
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-1 animate-fade-in-up">
-                {assets.map((item) => (
+                {discoveryImages.map((item) => (
                     <div key={item.id} className="aspect-square bg-secondary overflow-hidden relative group cursor-pointer hover:shadow-lg transition-shadow rounded-sm">
-                        <LazyGridImage blob={item.blob} />
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                        <LazyGridImage item={item} />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none" />
+                        
+                        {/* Collection Tag */}
+                        <div className="absolute bottom-1 right-1 bg-black/50 backdrop-blur px-1.5 py-0.5 rounded text-[8px] text-white opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                            {item.album.name}
+                        </div>
                     </div>
                 ))}
             </div>
@@ -118,15 +166,15 @@ const GalleryScreen: React.FC = () => {
                 <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-secondary mb-6">
                     <VaultIcon className="w-10 h-10 opacity-30" />
                 </div>
-                <h3 className="text-2xl font-bold mb-3 text-text-main">No Images Yet</h3>
+                <h3 className="text-2xl font-bold mb-3 text-text-main">Discovery Empty</h3>
                 <p className="text-text-sub mb-8 max-w-md mx-auto text-sm">
-                    Upload images to ZIA to use them in your collections and feed.
+                    Create Collections to populate this wall with your memories.
                 </p>
                 <button
                     onClick={() => fileInputRef.current?.click()}
                     className="py-3 px-8 bg-accent text-primary rounded-full font-bold uppercase tracking-wide hover:opacity-90 transition shadow-lg active:scale-95"
                 >
-                    Upload Image
+                    Upload to Storage
                 </button>
             </div>
         )}
