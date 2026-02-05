@@ -17,7 +17,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { ToastProvider } from './context/ToastContext';
 import { ReactionProvider } from './context/ReactionContext';
 
-// Updated View type to include prompts
+// Updated View type to include 5 tabs
 type View = 'home' | 'feed' | 'create' | 'gallery' | 'prompts';
 
 function AppContent() {
@@ -57,14 +57,14 @@ function AppContent() {
             thumbnail: albumData.thumbnail,
             images: albumData.images,
             updatedAt: new Date(),
-            lastViewedAt: new Date() // Priority update: Edit moves it to top
+            lastViewedAt: new Date() // Priority update: Editing bumps priority
         });
       } else {
         // Create new
         await data.photoHumans.add({
           ...albumData,
           createdAt: new Date(),
-          lastViewedAt: new Date(), // New items start at top
+          lastViewedAt: new Date(), // New items start at top priority
           schemaVersion: 1, 
           metadata: {} 
         });
@@ -73,7 +73,7 @@ function AppContent() {
       setView('home');
     } catch (error) {
       console.error("Failed to save album:", error);
-      alert("Error: Could not save the album. Please ensure you have enough storage space and try again.");
+      alert("Error: Could not save the album. Storage might be full.");
     }
   };
 
@@ -89,10 +89,9 @@ function AppContent() {
 
   const handleViewAlbum = (album: PhotoHuman) => {
     setSelectedAlbum(album);
-    // FEATURE 1: Collection Priority Logic
+    // FEATURE 1: Collection Priority Logic (Dynamic Sorting)
     // When a user clicks a collection, update lastViewedAt.
-    // Since HomeScreen and FeedScreen use liveQuery with orderBy('lastViewedAt'),
-    // this instantly reorders the lists in both views.
+    // HomeScreen and FeedScreen sort by this field, so priority updates instantly.
     if (album.id) {
         data.photoHumans.update(album.id, { lastViewedAt: new Date() });
     }
