@@ -1,6 +1,6 @@
 
 import Dexie, { type Table } from 'dexie';
-import type { PhotoHuman, Prompt } from '../types';
+import type { PhotoHuman, Prompt, MediaAsset } from '../types';
 
 /**
  * ZIA DataLayer
@@ -12,16 +12,24 @@ export class ZiaDataLayer extends Dexie {
   photoHumans!: Table<PhotoHuman, number>;
   prompts!: Table<Prompt, number>;
   likes!: Table<{ albumId: number; likedAt: Date }, number>;
+  mediaAssets!: Table<MediaAsset, number>;
 
   constructor() {
     super('ziar-core-storage');
     
-    // Schema definition - Designed to be additive for future-proofing
-    // Fix: Cast this to any/Dexie to access version method which might be hidden on subclass type
-    (this as unknown as Dexie).version(2).stores({
-      photoHumans: '++id, name, createdAt, updatedAt',
+    // Schema definition
+    (this as unknown as Dexie).version(3).stores({
+      photoHumans: '++id, name, createdAt, updatedAt, lastViewedAt',
       prompts: '++id, index',
-      likes: 'albumId, likedAt' // persistent likes storage
+      likes: 'albumId, likedAt',
+      mediaAssets: '++id, createdAt'
+    }).upgrade(tx => {
+       // Migration: ensure existing items have a lastViewedAt so they sort correctly
+       return tx.table('photoHumans').toCollection().modify(item => {
+          if (!item.lastViewedAt) {
+              item.lastViewedAt = item.createdAt;
+          }
+       });
     });
 
     this.initStoragePersistence();
